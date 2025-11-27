@@ -32,11 +32,18 @@ app/src/main/kotlin/com/r3bl/imageblur/
 └── ShareActivity.kt    # Entry point for share intents
 ```
 
-## Building a Release APK
+## Building and Distributing APK
 
 1. In Android Studio: Build → Build Bundle(s) / APK(s) → Build APK(s)
-2. Copy the APK to `releases/` folder in the repo
-3. Commit and push
+2. APK is generated at: `app/build/outputs/apk/debug/app-debug.apk`
+3. Copy to releases folder:
+   ```bash
+   cp app/build/outputs/apk/debug/app-debug.apk releases/
+   ```
+4. Commit and push:
+   ```bash
+   git add releases/ && git commit -m "Update release APK" && git push
+   ```
 
 The `releases/` folder is tracked in git for sideloading to other devices.
 

@@ -32,6 +32,14 @@ app/src/main/kotlin/com/r3bl/imageblur/
 └── ShareActivity.kt    # Entry point for share intents
 ```
 
+## Building a Release APK
+
+1. In Android Studio: Build → Build Bundle(s) / APK(s) → Build APK(s)
+2. Copy the APK to `releases/` folder in the repo
+3. Commit and push
+
+The `releases/` folder is tracked in git for sideloading to other devices.
+
 ## Commit Guidelines
 
 Do not include the following in commit messages:

@@ -1,15 +1,31 @@
 #!/usr/bin/env fish
 # Bootstrap script for R3BL Image Blur Android App development environment
 # Run this once to set up all dependencies
+# Works on both Linux and macOS
 
 echo "=== R3BL Image Blur Bootstrap ==="
+echo ""
+
+# Detect OS
+set -l os_type (uname -s)
+echo "Detected OS: $os_type"
 echo ""
 
 # 1. Install JDK 21 (not just JRE - needed for compilation)
 echo "Installing OpenJDK 21..."
 if not command -q javac
-    sudo apt install -y openjdk-21-jdk
-    echo "✓ JDK 21 installed"
+    if test "$os_type" = "Darwin"
+        if command -q brew
+            brew install openjdk@21
+            echo "✓ JDK 21 installed via Homebrew"
+        else
+            echo "✗ Please install Homebrew first: https://brew.sh"
+            exit 1
+        end
+    else
+        sudo apt install -y openjdk-21-jdk
+        echo "✓ JDK 21 installed"
+    end
 else
     echo "✓ JDK already installed ($(javac -version 2>&1))"
 end
@@ -17,8 +33,22 @@ end
 # 2. Install Android SDK (API 35 for Android 15)
 echo ""
 echo "Setting up Android SDK..."
-set -l ANDROID_HOME "$HOME/Android/Sdk"
-set -l CMDLINE_TOOLS_URL "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+
+# Set platform-specific paths and URLs
+if test "$os_type" = "Darwin"
+    set -l ANDROID_HOME "$HOME/Library/Android/sdk"
+    set -l CMDLINE_TOOLS_URL "https://dl.google.com/android/repository/commandlinetools-mac-11076708_latest.zip"
+else
+    set -l ANDROID_HOME "$HOME/Android/Sdk"
+    set -l CMDLINE_TOOLS_URL "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+end
+
+# Use global for ANDROID_HOME so it persists
+if test "$os_type" = "Darwin"
+    set -g ANDROID_HOME "$HOME/Library/Android/sdk"
+else
+    set -g ANDROID_HOME "$HOME/Android/Sdk"
+end
 
 if not test -d "$ANDROID_HOME/platforms/android-35"
     # Create SDK directory
@@ -28,7 +58,13 @@ if not test -d "$ANDROID_HOME/platforms/android-35"
     if not test -d "$ANDROID_HOME/cmdline-tools/latest"
         echo "Downloading Android command line tools..."
         set -l tmp_zip /tmp/cmdline-tools.zip
-        curl -L -o $tmp_zip $CMDLINE_TOOLS_URL
+
+        if test "$os_type" = "Darwin"
+            curl -L -o $tmp_zip "https://dl.google.com/android/repository/commandlinetools-mac-11076708_latest.zip"
+        else
+            curl -L -o $tmp_zip "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+        end
+
         unzip -q $tmp_zip -d /tmp/cmdline-tools-tmp
         mv /tmp/cmdline-tools-tmp/cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
         rm -rf $tmp_zip /tmp/cmdline-tools-tmp
@@ -44,7 +80,7 @@ else
 end
 
 # Set ANDROID_HOME for this session and create local.properties
-set -gx ANDROID_HOME "$HOME/Android/Sdk"
+set -gx ANDROID_HOME $ANDROID_HOME
 set -gx PATH "$ANDROID_HOME/platform-tools" $PATH
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
@@ -56,8 +92,13 @@ if test -f "$ANDROID_HOME/platform-tools/adb"
 else if command -q adb
     echo "✓ ADB already installed (system)"
 else
-    sudo apt install -y adb
-    echo "✓ ADB installed via apt"
+    if test "$os_type" = "Darwin"
+        brew install --cask android-platform-tools
+        echo "✓ ADB installed via Homebrew"
+    else
+        sudo apt install -y adb
+        echo "✓ ADB installed via apt"
+    end
 end
 
 # 4. Generate/update Gradle wrapper
@@ -67,7 +108,11 @@ echo "Setting up Gradle wrapper..."
 # Check if we need to install gradle to bootstrap the wrapper
 if not test -f gradlew
     echo "Installing Gradle to generate wrapper..."
-    sudo apt install -y gradle
+    if test "$os_type" = "Darwin"
+        brew install gradle
+    else
+        sudo apt install -y gradle
+    end
     gradle wrapper --gradle-version 8.13
     echo "✓ Gradle wrapper generated"
 else
@@ -79,7 +124,11 @@ set -l wrapper_props gradle/wrapper/gradle-wrapper.properties
 if test -f $wrapper_props
     if not grep -q "gradle-8.13" $wrapper_props
         echo "Updating Gradle wrapper to 8.13..."
-        sed -i 's/gradle-[0-9.]*-bin.zip/gradle-8.13-bin.zip/' $wrapper_props
+        if test "$os_type" = "Darwin"
+            sed -i '' 's/gradle-[0-9.]*-bin.zip/gradle-8.13-bin.zip/' $wrapper_props
+        else
+            sed -i 's/gradle-[0-9.]*-bin.zip/gradle-8.13-bin.zip/' $wrapper_props
+        end
         echo "✓ Wrapper updated to Gradle 8.13"
     else
         echo "✓ Gradle wrapper already at 8.13"

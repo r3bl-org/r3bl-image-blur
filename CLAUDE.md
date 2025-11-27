@@ -6,8 +6,23 @@ A minimal Android app that applies blur and darken effects to images shared via 
 
 ## Build & Run
 
+### Quick Start (First Time Setup)
+Run the bootstrap script to install all dependencies:
+```bash
+./bootstrap.fish
+```
+This installs JDK 21, ADB, and Gradle wrapper, then builds the APK.
+
+### Using Android Studio
 - Open in Android Studio and run on device
-- Or use: `./gradlew installDebug` (requires Gradle wrapper)
+
+### Using Command Line (gradlew)
+```bash
+./gradlew assembleDebug    # Build debug APK
+./gradlew installDebug     # Build and install to connected device
+```
+
+The APK will be at `app/build/outputs/apk/debug/app-debug.apk`
 
 ## Debug Logging
 

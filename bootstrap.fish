@@ -14,17 +14,53 @@ else
     echo "✓ JDK already installed ($(javac -version 2>&1))"
 end
 
-# 2. Install ADB for device communication and debugging
+# 2. Install Android SDK (API 35 for Android 15)
 echo ""
-echo "Installing ADB..."
-if not command -q adb
-    sudo apt install -y adb
-    echo "✓ ADB installed"
+echo "Setting up Android SDK..."
+set -l ANDROID_HOME "$HOME/Android/Sdk"
+set -l CMDLINE_TOOLS_URL "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+
+if not test -d "$ANDROID_HOME/platforms/android-35"
+    # Create SDK directory
+    mkdir -p "$ANDROID_HOME/cmdline-tools"
+
+    # Download command line tools if not present
+    if not test -d "$ANDROID_HOME/cmdline-tools/latest"
+        echo "Downloading Android command line tools..."
+        set -l tmp_zip /tmp/cmdline-tools.zip
+        curl -L -o $tmp_zip $CMDLINE_TOOLS_URL
+        unzip -q $tmp_zip -d /tmp/cmdline-tools-tmp
+        mv /tmp/cmdline-tools-tmp/cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
+        rm -rf $tmp_zip /tmp/cmdline-tools-tmp
+    end
+
+    # Accept licenses and install SDK components
+    echo "Installing Android SDK platform 35 (Android 15)..."
+    yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1
+    "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+    echo "✓ Android SDK installed"
 else
-    echo "✓ ADB already installed"
+    echo "✓ Android SDK already installed"
 end
 
-# 3. Generate/update Gradle wrapper
+# Set ANDROID_HOME for this session and create local.properties
+set -gx ANDROID_HOME "$HOME/Android/Sdk"
+set -gx PATH "$ANDROID_HOME/platform-tools" $PATH
+echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+# 3. Install ADB for device communication and debugging
+echo ""
+echo "Installing ADB (via SDK platform-tools)..."
+if test -f "$ANDROID_HOME/platform-tools/adb"
+    echo "✓ ADB available at $ANDROID_HOME/platform-tools/adb"
+else if command -q adb
+    echo "✓ ADB already installed (system)"
+else
+    sudo apt install -y adb
+    echo "✓ ADB installed via apt"
+end
+
+# 4. Generate/update Gradle wrapper
 echo ""
 echo "Setting up Gradle wrapper..."
 
@@ -50,7 +86,7 @@ if test -f $wrapper_props
     end
 end
 
-# 4. Test the build
+# 5. Test the build
 echo ""
 echo "Testing build..."
 ./gradlew assembleDebug --quiet

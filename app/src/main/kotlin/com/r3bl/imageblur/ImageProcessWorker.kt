@@ -99,17 +99,20 @@ class ImageProcessWorker(
             Log.d(Config.LOG_TAG, "  Processed bitmap: ${processed.width}x${processed.height}, config=${processed.config}")
 
             // Create output filename
-            val outputName = createOutputFileName(originalName)
-            Log.d(Config.LOG_TAG, "  outputName=$outputName")
+            val (baseName, ext) = createOutputFileName(originalName)
+            Log.d(Config.LOG_TAG, "  baseName=$baseName, ext=$ext")
 
             // Save to Downloads
             updateProgress("Saving to Downloads...")
             Log.d(Config.LOG_TAG, "  Saving to Downloads...")
             val saveStartTime = System.currentTimeMillis()
-            val outputUri = saveToDownloads(processed, outputName)
+            val saveResult = saveToDownloads(processed, baseName, ext)
             val saveTime = System.currentTimeMillis() - saveStartTime
             Log.d(Config.LOG_TAG, "  Save completed in ${saveTime}ms")
-            Log.d(Config.LOG_TAG, "  outputUri=$outputUri")
+
+            val outputUri = saveResult?.first
+            val outputName = saveResult?.second ?: "$baseName$ext"
+            Log.d(Config.LOG_TAG, "  outputUri=$outputUri, outputName=$outputName")
 
             // Clean up cached file
             Log.d(Config.LOG_TAG, "  Cleaning up cached file...")
@@ -165,18 +168,30 @@ class ImageProcessWorker(
         setForeground(createProgressForegroundInfo(status))
     }
 
-    private fun createOutputFileName(originalName: String): String {
+    private fun createOutputFileName(originalName: String): Pair<String, String> {
         val dotIndex = originalName.lastIndexOf('.')
         return if (dotIndex > 0) {
-            val name = originalName.substring(0, dotIndex)
+            val baseName = originalName.substring(0, dotIndex) + "_blur"
             val ext = originalName.substring(dotIndex)
-            "${name}_blur$ext"
+            Pair(baseName, ext)
         } else {
-            "${originalName}_blur.png"
+            Pair("${originalName}_blur", ".png")
         }
     }
 
-    private fun saveToDownloads(bitmap: android.graphics.Bitmap, fileName: String): Uri? {
+    private fun saveToDownloads(bitmap: android.graphics.Bitmap, baseName: String, ext: String): Pair<Uri, String>? {
+        var fileName = "$baseName$ext"
+        var counter = 1
+
+        // Find a unique filename
+        while (fileExistsInDownloads(fileName)) {
+            fileName = "${baseName}_$counter$ext"
+            counter++
+            Log.d(Config.LOG_TAG, "  File exists, trying: $fileName")
+        }
+
+        Log.d(Config.LOG_TAG, "  Using filename: $fileName")
+
         val contentValues = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, fileName)
             put(MediaStore.Downloads.MIME_TYPE, getMimeType(fileName))
@@ -197,7 +212,24 @@ class ImageProcessWorker(
             bitmap.compress(format, 100, outputStream)
         }
 
-        return uri
+        return Pair(uri, fileName)
+    }
+
+    private fun fileExistsInDownloads(fileName: String): Boolean {
+        val projection = arrayOf(MediaStore.Downloads._ID)
+        val selection = "${MediaStore.Downloads.DISPLAY_NAME} = ?"
+        val selectionArgs = arrayOf(fileName)
+
+        context.contentResolver.query(
+            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            selectionArgs,
+            null
+        )?.use { cursor ->
+            return cursor.count > 0
+        }
+        return false
     }
 
     private fun getMimeType(fileName: String): String {

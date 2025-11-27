@@ -17,7 +17,7 @@ object Config {
     const val SCALE_FACTOR = 0.2f
 
     /** Darken overlay alpha (0.0-1.0). Higher = darker. */
-    const val DARKEN_ALPHA = 0.3f
+    const val DARKEN_ALPHA = 0.18f
 
     /** Notification channel ID for completion notifications */
     const val NOTIFICATION_CHANNEL_ID = "image_processing"

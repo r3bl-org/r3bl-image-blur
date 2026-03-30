@@ -1,0 +1,72 @@
+# R3BL Image Blur Android App
+
+## Project Overview
+
+A minimal Android app that applies blur and darken effects to images shared via the Android share menu. No launcher icon - the app only appears in the share sheet.
+
+## Build & Run
+
+### Quick Start (First Time Setup)
+Run the bootstrap script to install all dependencies:
+```bash
+./bootstrap.fish
+```
+This installs JDK 21, ADB, and Gradle wrapper, then builds the APK.
+
+### Using Android Studio
+- Open in Android Studio and run on device
+
+### Using Command Line (gradlew)
+```bash
+./gradlew assembleDebug    # Build debug APK
+./gradlew installDebug     # Build and install to connected device
+```
+
+The APK will be at `app/build/outputs/apk/debug/app-debug.apk`
+
+## Debug Logging
+
+Run `./adb-log.fish` to capture filtered logcat output. Logs are tagged with `ImageBlur`.
+
+## Architecture
+
+- `ShareActivity` - Receives share intents, handles permissions, enqueues work
+- `ImageProcessWorker` - Background worker that processes images
+- `ImageProcessor` - Pure functions for blur (stack blur algorithm) and darken effects
+- `Permissions` - Runtime permission handling for notifications (Android 13+)
+- `Config` - Tunable constants (blur radius, scale factor, darken alpha)
+
+## Key Files
+
+```
+app/src/main/kotlin/com/r3bl/imageblur/
+├── Config.kt           # Configuration constants
+├── ImageProcessWorker.kt # WorkManager worker
+├── ImageProcessor.kt   # Blur & darken algorithms
+├── Permissions.kt      # Notification permission handling
+└── ShareActivity.kt    # Entry point for share intents
+```
+
+## Building and Distributing APK
+
+1. In Android Studio: Build → Build Bundle(s) / APK(s) → Build APK(s)
+2. APK is generated at: `app/build/outputs/apk/debug/app-debug.apk`
+3. Copy to releases folder:
+   ```bash
+   cp app/build/outputs/apk/debug/app-debug.apk releases/
+   ```
+4. Commit and push:
+   ```bash
+   git add releases/ && git commit -m "Update release APK" && git push
+   ```
+
+The `releases/` folder is tracked in git for sideloading to other devices.
+
+## Commit Guidelines
+
+Do not include the following in commit messages:
+```
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
